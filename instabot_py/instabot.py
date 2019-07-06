@@ -552,7 +552,7 @@ class InstaBot:
             params = {'query_hash':'7c16654f22c819fb63d1183034a5162f','variables':'{"include_highlight_reels":false,"include_reel":true,"user_id":'+user_id+',"include_chaining":false,"include_suggested_users":false,"include_logged_out_extras":false}'}
             try:
                 # to view below page, no login required
-                r = session.get("https://www.instagram.com/graphql/query",params=params,headers=headers,allow_redirects=False,verify=False)
+                r = self.t.get("https://www.instagram.com/graphql/query",params=params,headers=headers,allow_redirects=False,verify=False)
                 if r.status_code == 200 and r.json()["status"] == "ok":
                     username = r.json()["data"]["user"]["reel"]["owner"]["username"]
                     self.dict_username[user_id] = username #   stored in dictionary, in case need to be fetched again
