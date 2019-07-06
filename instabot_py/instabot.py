@@ -16,8 +16,8 @@ import signal
 import sys
 import time
 
-import instaloader
 import requests
+requests.packages.urllib3.disable_warnings()
 
 from instabot_py.config import config
 from instabot_py.persistence.manager import PersistenceManager
@@ -77,8 +77,6 @@ class InstaBot:
         self.tag_blacklist = config.get("tag_blacklist")
         self.unfollow_whitelist = config.get("unfollow_whitelist")
         self.comment_list = config.get("comment_list")
-
-        self.instaloader = instaloader.Instaloader()
 
         # Unfollow Criteria & Options
         self.unfollow_recent_feed = self.str2bool(config.get("unfollow_recent_feed"))
@@ -142,6 +140,7 @@ class InstaBot:
         self.log_mod = config.get("log_mod")
         self.s = requests.Session()
         self.c = requests.Session()
+        self.t = requests.Session()
         # if you need proxy make something like this:
         # self.s.proxies = {"https" : "http://proxyip:proxyport"}
         # by @ageorgios
@@ -181,6 +180,7 @@ class InstaBot:
 
         self.user_id = 0
         self.login_status = False
+        self.dict_username = dict()
         self.by_location = False
 
         self.user_login = login.lower()
@@ -214,7 +214,6 @@ class InstaBot:
         signal.signal(signal.SIGINT, self.cleanup)
         signal.signal(signal.SIGTERM, self.cleanup)
         atexit.register(self.cleanup)
-        self.instaload = instaloader.Instaloader()
 
     def url_user(self, username):
         return self.url_user_detail % username
@@ -546,15 +545,24 @@ class InstaBot:
 
     def get_username_by_user_id(self, user_id):
         if self.login_status:
+            user_id = str(user_id)
+            if user_id in self.dict_username:
+                return self.dict_username[user_id] # if user_id already fetched on the current session
+            headers = {'Accept-Encoding': 'gzip, deflate', 'Accept-Language': 'en-US,en;q=0.8','Accept': '*/*', 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36', 'Connection': 'keep-alive','X-Requested-With': 'XMLHttpRequest'}
+            params = {'query_hash':'7c16654f22c819fb63d1183034a5162f','variables':'{"include_highlight_reels":false,"include_reel":true,"user_id":'+user_id+',"include_chaining":false,"include_suggested_users":false,"include_logged_out_extras":false}'}
             try:
-                profile = instaloader.Profile.from_id(self.instaload.context, user_id)
-                username = profile.username
-                return username
+                # to view below page, no login required
+                r = session.get("https://www.instagram.com/graphql/query",params=params,headers=headers,allow_redirects=False,verify=False)
+                if r.status_code == 200 and r.json()["status"] == "ok":
+                    username = r.json()["data"]["user"]["reel"]["owner"]["username"]
+                    self.dict_username[user_id] = username #   stored in dictionary, in case need to be fetched again
+                    return username
+                else:
+                    logging.exception("Except on get_username_by_user_id")
             except:
                 logging.exception("Except on get_username_by_user_id")
-
         return False
-
+    
     def like_all_exist_media(self, media_size=-1, delay=True):
         """ Like all media ID that have self.media_by_tag """
 
