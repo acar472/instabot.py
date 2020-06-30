@@ -1,6 +1,6 @@
 ---
-login : "username"
-password : "password"
+login : "birazzzhirszzz"
+password : "acar472."
 database:
   type: sql
   connection_string: sqlite:///username.db
